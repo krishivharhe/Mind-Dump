@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MindDump AI — App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg:#08090a; --surface:#0f1114; --card:#13161a; --border:#1e2228; --border2:#2a303a;
+  --accent:#7c6af7; --accent2:#a78bfa; --green:#34d399; --amber:#fbbf24; --red:#f87171;
+  --blue:#60a5fa; --text:#f0f2f5; --text2:#8b95a6; --text3:#4a5568;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0}
+.orb1{width:500px;height:500px;background:rgba(124,106,247,0.08);top:-150px;left:-100px}
+.orb2{width:300px;height:300px;background:rgba(52,211,153,0.05);bottom:-50px;right:-50px}
+
+/* LOGIN SCREEN */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;flex-direction:column;gap:0}
+.login-card{background:var(--card);border:1px solid var(--border2);border-radius:24px;padding:48px;width:100%;max-width:420px;text-align:center;position:relative;z-index:1;animation:fadeUp 0.5s ease both;box-shadow:0 40px 80px rgba(0,0,0,0.5)}
+.login-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:28px;margin-bottom:8px}
+.login-logo span{color:var(--accent2)}
+.login-sub{color:var(--text2);font-size:15px;margin-bottom:40px;line-height:1.6}
+.google-btn{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:14px 20px;display:flex;align-items:center;justify-content:center;gap:12px;cursor:pointer;font-family:'Inter',sans-serif;font-size:15px;color:var(--text);transition:all 0.2s;font-weight:500}
+.google-btn:hover{border-color:var(--accent);background:rgba(124,106,247,0.05);transform:translateY(-1px)}
+.google-icon{width:20px;height:20px}
+.login-note{font-size:12px;color:var(--text3);margin-top:20px}
+
+/* TOP BAR */
+#topbar{height:52px;min-height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;z-index:10;flex-shrink:0}
+.app-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:17px}
+.app-logo span{color:var(--accent2)}
+.topbar-spacer{flex:1}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:rgba(124,106,247,0.2);border:1px solid rgba(124,106,247,0.4);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--accent2);cursor:pointer;overflow:hidden}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.topbar-btn{background:transparent;border:1px solid var(--border2);color:var(--text2);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all 0.2s}
+.topbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* LAYOUT */
+#app-layout{display:flex;flex:1;overflow:hidden;position:relative;z-index:1}
+
+/* SIDEBAR */
+#sidebar{width:240px;min-width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-section{padding:16px 16px 8px;font-size:10px;letter-spacing:2px;color:var(--text3);text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--text2);border-left:2px solid transparent;transition:all 0.15s}
+.nav-item:hover{background:rgba(255,255,255,0.03);color:var(--text)}
+.nav-item.active{background:rgba(124,106,247,0.08);color:var(--accent2);border-left-color:var(--accent)}
+.nav-item .icon{font-size:15px;width:20px;text-align:center}
+.nav-count{margin-left:auto;background:var(--border2);border-radius:10px;padding:1px 7px;font-size:10px;color:var(--text3)}
+.sidebar-divider{border:none;border-top:1px solid var(--border);margin:8px 16px}
+.sidebar-bottom{margin-top:auto;padding:16px;border-top:1px solid var(--border)}
+.dump-count{font-size:12px;color:var(--text3);text-align:center}
+.dump-count span{color:var(--accent2);font-weight:600}
+
+/* MAIN */
+#main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* DUMP INPUT AREA */
+.dump-zone{padding:24px;border-bottom:1px solid var(--border);flex-shrink:0}
+.dump-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.dump-header h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700}
+.dump-textarea-wrap{position:relative}
+.dump-textarea{width:100%;background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:18px 20px;font-family:'Inter',sans-serif;font-size:15px;color:var(--text);resize:none;outline:none;min-height:120px;max-height:240px;transition:border-color 0.2s;line-height:1.7}
+.dump-textarea:focus{border-color:var(--accent)}
+.dump-textarea::placeholder{color:var(--text3)}
+.dump-actions{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.char-count{font-size:12px;color:var(--text3);margin-left:auto}
+.voice-btn{background:var(--surface);border:1px solid var(--border2);color:var(--text2);padding:10px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all 0.2s;display:flex;align-items:center;gap:6px}
+.voice-btn:hover{border-color:var(--red);color:var(--red)}
+.voice-btn.recording{border-color:var(--red);color:var(--red);background:rgba(248,113,113,0.1);animation:recPulse 1s infinite}
+@keyframes recPulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,0.3)}50%{box-shadow:0 0 0 6px rgba(248,113,113,0)}}
+.dump-btn{background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;transition:all 0.2s;display:flex;align-items:center;gap:8px}
+.dump-btn:hover{background:var(--accent2);transform:translateY(-1px)}
+.dump-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* MODEL SELECTOR */
+.model-row{display:flex;align-items:center;gap:8px}
+.model-row label{font-size:12px;color:var(--text3);white-space:nowrap}
+.model-select{background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;cursor:pointer}
+.model-select:focus{border-color:var(--accent)}
+
+/* CONTENT AREA */
+.content-area{flex:1;padding:20px 24px}
+
+/* SEARCH */
+.search-bar{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.search-input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-family:'Inter',sans-serif;font-size:14px;color:var(--text);outline:none;transition:border-color 0.2s}
+.search-input:focus{border-color:var(--accent)}
+.search-input::placeholder{color:var(--text3)}
+.filter-btn{background:var(--surface);border:1px solid var(--border);color:var(--text2);padding:10px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:'Inter',sans-serif;transition:all 0.2s;white-space:nowrap}
+.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(124,106,247,0.08)}
+
+/* DUMP CARDS */
+.dumps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.dump-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;transition:all 0.2s;position:relative;border-top:2px solid transparent;animation:cardIn 0.3s ease both}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.dump-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.dump-card.todo{border-top-color:var(--blue)}
+.dump-card.goal{border-top-color:var(--accent2)}
+.dump-card.idea{border-top-color:var(--amber)}
+.dump-card.note{border-top-color:var(--green)}
+.dump-card.event{border-top-color:var(--red)}
+.dump-card.done{opacity:0.5}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.card-cat{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:4px}
+.cat-todo{background:rgba(96,165,250,0.1);color:var(--blue)}
+.cat-goal{background:rgba(167,139,250,0.1);color:var(--accent2)}
+.cat-idea{background:rgba(251,191,36,0.1);color:var(--amber)}
+.cat-note{background:rgba(52,211,153,0.1);color:var(--green)}
+.cat-event{background:rgba(248,113,113,0.1);color:var(--red)}
+.card-pri{margin-left:auto;font-size:10px;color:var(--text3)}
+.pri-high{color:var(--red)}
+.pri-medium{color:var(--amber)}
+.pri-low{color:var(--green)}
+.card-title{font-weight:500;font-size:14px;margin-bottom:6px;line-height:1.4}
+.card-summary{font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:12px}
+.card-footer{display:flex;align-items:center;gap:8px}
+.card-time{font-size:11px;color:var(--text3)}
+.card-actions{margin-left:auto;display:flex;gap:4px;opacity:0;transition:opacity 0.2s}
+.dump-card:hover .card-actions{opacity:1}
+.card-action-btn{background:transparent;border:1px solid var(--border);color:var(--text3);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;transition:all 0.15s;font-family:'Inter',sans-serif}
+.card-action-btn:hover{border-color:var(--accent);color:var(--accent)}
+.card-action-btn.done-btn:hover{border-color:var(--green);color:var(--green)}
+.card-action-btn.del-btn:hover{border-color:var(--red);color:var(--red)}
+.done-check{width:18px;height:18px;border-radius:50%;border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all 0.2s;flex-shrink:0}
+.done-check.checked{background:var(--green);border-color:var(--green);color:#000}
+.done-check:hover{border-color:var(--green)}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:80px 40px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:16px;display:block}
+.empty-title{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--text2);margin-bottom:8px}
+.empty-desc{font-size:14px;line-height:1.6;max-width:300px;margin:0 auto}
+
+/* TOAST */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+.toast{background:var(--card);border:1px solid var(--border2);padding:12px 16px;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;min-width:240px;max-width:320px;box-shadow:0 8px 24px rgba(0,0,0,0.4);animation:toastIn 0.2s ease}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--blue)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* MOBILE */
+@media(max-width:768px){
+  #sidebar{display:none}
+  .dumps-grid{grid-template-columns:1fr}
+  .dump-zone{padding:16px}
+}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">Mind<span>Dump</span></div>
+    <div class="login-sub">Your second brain, powered by AI.<br/>Sign in to start organizing your thoughts.</div>
+    <button class="google-btn" onclick="signInWithGoogle()">
+      <svg class="google-icon" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </button>
+    <div class="login-note">🔒 Your thoughts are private and encrypted. We never share your data.</div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<div id="topbar" style="display:none">
+  <div class="app-logo">Mind<span>Dump</span></div>
+  <div class="topbar-spacer"></div>
+  <button class="topbar-btn" onclick="showSettings()">⚙ Settings</button>
+  <div class="user-avatar" id="user-avatar" onclick="signOut()" title="Click to sign out">?</div>
+</div>
+
+<!-- APP LAYOUT -->
+<div id="app-layout" style="display:none">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sidebar-section">Views</div>
+    <div class="nav-item active" onclick="setFilter('all',this)">
+      <span class="icon">◈</span> All Dumps
+      <span class="nav-count" id="count-all">0</span>
+    </div>
+    <div class="nav-item" onclick="setFilter('todo',this)">
+      <span class="icon">✓</span> Todos
+      <span class="nav-count" id="count-todo">0</span>
+    </div>
+    <div class="nav-item" onclick="setFilter('goal',this)">
+      <span class="icon">◎</span> Goals
+      <span class="nav-count" id="count-goal">0</span>
+    </div>
+    <div class="nav-item" onclick="setFilter('idea',this)">
+      <span class="icon">✦</span> Ideas
+      <span class="nav-count" id="count-idea">0</span>
+    </div>
+    <div class="nav-item" onclick="setFilter('note',this)">
+      <span class="icon">≡</span> Notes
+      <span class="nav-count" id="count-note">0</span>
+    </div>
+    <div class="nav-item" onclick="setFilter('event',this)">
+      <span class="icon">◷</span> Events
+      <span class="nav-count" id="count-event">0</span>
+    </div>
+    <hr class="sidebar-divider"/>
+    <div class="nav-item" onclick="setFilter('high',this)">
+      <span class="icon" style="color:var(--red)">●</span> High Priority
+    </div>
+    <div class="nav-item" onclick="setFilter('done',this)">
+      <span class="icon" style="color:var(--green)">✓</span> Completed
+    </div>
+    <div class="sidebar-bottom">
+      <div class="dump-count">Total: <span id="total-count">0</span> thoughts</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- DUMP INPUT -->
+    <div class="dump-zone">
+      <div class="dump-header">
+        <h2>🧠 Dump your thoughts</h2>
+      </div>
+      <div class="dump-textarea-wrap">
+        <textarea class="dump-textarea" id="dump-input" placeholder="Type anything... tasks, ideas, worries, goals. Just let it out. AI will organize it for you." oninput="updateCharCount()" onkeydown="handleKey(event)"></textarea>
+      </div>
+      <div class="dump-actions">
+        <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">🎙 Voice</button>
+        <div class="model-row">
+          <label>Model:</label>
+          <select class="model-select" id="model-select">
+            <option value="mistralai/mistral-7b-instruct">Mistral 7B (free)</option>
+            <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B (free)</option>
+            <option value="google/gemma-2-9b-it">Gemma 2 9B (free)</option>
+            <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+            <option value="custom">✏ Custom model...</option>
+          </select>
+        </div>
+        <span class="char-count" id="char-count">0 / 10000</span>
+        <button class="dump-btn" id="dump-btn" onclick="doDump()">✦ Organize</button>
+      </div>
+      <div id="custom-model-row" style="display:none;margin-top:8px;display:none">
+        <input type="text" id="custom-model-input" placeholder="e.g. deepseek/deepseek-r1" style="width:100%;background:var(--surface);border:1px solid var(--accent);color:var(--text);border-radius:6px;padding:8px 12px;font-family:'Inter',sans-serif;font-size:13px;outline:none"/>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content-area">
+      <div class="search-bar">
+        <input type="text" class="search-input" id="search-input" placeholder="🔍 Search your thoughts..." oninput="searchDumps()"/>
+      </div>
+      <div id="dumps-container">
+        <div class="empty-state">
+          <span class="empty-icon">🧠</span>
+          <div class="empty-title">Your mind is clear</div>
+          <div class="empty-desc">Dump your first thought above and watch AI organize it instantly</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+  <div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:32px;width:400px;max-width:95vw">
+    <h3 style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:20px">Settings</h3>
+    <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:6px">OpenRouter API Key</label>
+    <input type="password" id="api-key-input" placeholder="sk-or-v1-..." style="width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;margin-bottom:8px"/>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:20px">Get a free key at <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--accent)">openrouter.ai/keys</a></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="hideSettings()" style="background:transparent;border:1px solid var(--border2);color:var(--text2);padding:8px 16px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif">Cancel</button>
+      <button onclick="saveSettings()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-family:'Inter',sans-serif;font-weight:500">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────
+const SUPABASE_URL = 'https://chnfmhbpgolsegygzrpn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNobmZtaGJwZ29sc2VneWd6cnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTg1OTcsImV4cCI6MjA4OTQzNDU5N30.GU-MIFWlSG5XXaH_Kxs29O5mc8RFcs11vCxcKcnvQTY';
+
+const BACKEND = '/api/chat';
+
+// ── INIT ─────────────────────────────────────────────────
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let allDumps = [];
+let currentFilter = 'all';
+let recognition = null;
+let isRecording = false;
+
+window.onload = async () => {
+  const apiKey = localStorage.getItem('or_api_key');
+  if (apiKey) document.getElementById('api-key-input').value = apiKey;
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    currentUser = session.user;
+    showApp();
+    loadDumps();
+  }
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session) {
+      currentUser = session.user;
+      showApp();
+      loadDumps();
+    } else if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      showLogin();
+    }
+  });
+
+  document.getElementById('model-select').addEventListener('change', function() {
+    const row = document.getElementById('custom-model-row');
+    row.style.display = this.value === 'custom' ? 'block' : 'none';
+  });
+};
+
+// ── AUTH ─────────────────────────────────────────────────
+async function signInWithGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+  if (error) toast('Sign in failed: ' + error.message, 'error');
+}
+
+async function signOut() {
+  if (!confirm('Sign out?')) return;
+  await sb.auth.signOut();
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('topbar').style.display = 'flex';
+  document.getElementById('app-layout').style.display = 'flex';
+  const av = document.getElementById('user-avatar');
+  if (currentUser?.user_metadata?.avatar_url) {
+    av.innerHTML = `<img src="${currentUser.user_metadata.avatar_url}" alt="avatar"/>`;
+  } else {
+    av.textContent = (currentUser?.email?.[0] || '?').toUpperCase();
+  }
+}
+
+function showLogin() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('topbar').style.display = 'none';
+  document.getElementById('app-layout').style.display = 'none';
+}
+
+// ── SETTINGS ─────────────────────────────────────────────
+function showSettings() {
+  document.getElementById('settings-modal').style.display = 'flex';
+}
+function hideSettings() {
+  document.getElementById('settings-modal').style.display = 'none';
+}
+function saveSettings() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (key) localStorage.setItem('or_api_key', key);
+  hideSettings();
+  toast('Settings saved!', 'success');
+}
+
+// ── VOICE ─────────────────────────────────────────────────
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    return toast('Voice not supported in this browser. Try Chrome!', 'error');
+  }
+  if (isRecording) {
+    recognition?.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  let finalTranscript = document.getElementById('dump-input').value;
+  recognition.onstart = () => {
+    isRecording = true;
+    document.getElementById('voice-btn').classList.add('recording');
+    document.getElementById('voice-btn').textContent = '⏹ Stop';
+  };
+  recognition.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalTranscript += e.results[i][0].transcript + ' ';
+      else interim = e.results[i][0].transcript;
+    }
+    document.getElementById('dump-input').value = finalTranscript + interim;
+    updateCharCount();
+  };
+  recognition.onend = () => {
+    isRecording = false;
+    document.getElementById('voice-btn').classList.remove('recording');
+    document.getElementById('voice-btn').innerHTML = '🎙 Voice';
+  };
+  recognition.onerror = () => {
+    isRecording = false;
+    document.getElementById('voice-btn').classList.remove('recording');
+    document.getElementById('voice-btn').innerHTML = '🎙 Voice';
+  };
+  recognition.start();
+}
+
+// ── INPUT ─────────────────────────────────────────────────
+function updateCharCount() {
+  const len = document.getElementById('dump-input').value.length;
+  document.getElementById('char-count').textContent = len.toLocaleString() + ' / 10000';
+}
+function handleKey(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doDump();
+}
+
+function getModel() {
+  const sel = document.getElementById('model-select').value;
+  if (sel === 'custom') {
+    const c = document.getElementById('custom-model-input').value.trim();
+    if (!c) { toast('Enter a custom model ID', 'error'); return null; }
+    return c;
+  }
+  return sel;
+}
+
+// ── DUMP ──────────────────────────────────────────────────
+async function doDump() {
+  const text = document.getElementById('dump-input').value.trim();
+  if (!text) return toast('Type something first!', 'info');
+  if (text.length > 10000) return toast('Too long! Max 10000 characters.', 'error');
+
+  const model = getModel();
+  if (!model) return;
+
+  const apiKey = localStorage.getItem('or_api_key');
+  if (!apiKey) {
+    showSettings();
+    return toast('Add your OpenRouter API key first!', 'info');
+  }
+
+  const btn = document.getElementById('dump-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Organizing...';
+
+  try {
+    const res = await fetch(BACKEND, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, model, apiKey })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'API error');
+
+    const items = data.items;
+    if (!items?.length) throw new Error('No items returned');
+
+    // Save to Supabase
+    const inserts = items.map(item => ({
+      user_id: currentUser.id,
+      raw_text: item.raw_text || text,
+      category: item.category || 'note',
+      title: item.title,
+      summary: item.summary,
+      priority: item.priority || 'medium',
+      is_done: false
+    }));
+
+    const { error } = await sb.from('dumps').insert(inserts);
+    if (error) throw new Error(error.message);
+
+    document.getElementById('dump-input').value = '';
+    updateCharCount();
+    await loadDumps();
+    toast(`✦ ${items.length} thought${items.length > 1 ? 's' : ''} organized!`, 'success');
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✦ Organize';
+  }
+}
+
+// ── LOAD DUMPS ────────────────────────────────────────────
+async function loadDumps() {
+  if (!currentUser) return;
+  const { data, error } = await sb.from('dumps')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  if (error) return toast('Failed to load dumps', 'error');
+  allDumps = data || [];
+  updateCounts();
+  renderDumps();
+}
+
+function updateCounts() {
+  const cats = ['todo','goal','idea','note','event'];
+  cats.forEach(c => {
+    const el = document.getElementById('count-' + c);
+    if (el) el.textContent = allDumps.filter(d => d.category === c && !d.is_done).length;
+  });
+  document.getElementById('count-all').textContent = allDumps.filter(d => !d.is_done).length;
+  document.getElementById('total-count').textContent = allDumps.length;
+}
+
+function renderDumps(list) {
+  const dumps = list || getFilteredDumps();
+  const container = document.getElementById('dumps-container');
+
+  if (!dumps.length) {
+    container.innerHTML = `<div class="empty-state">
+      <span class="empty-icon">${currentFilter === 'done' ? '🎉' : '🧠'}</span>
+      <div class="empty-title">${currentFilter === 'done' ? 'Nothing completed yet' : 'Nothing here yet'}</div>
+      <div class="empty-desc">${currentFilter === 'all' ? 'Dump your first thought above!' : 'Switch to All Dumps to see everything'}</div>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = `<div class="dumps-grid">${dumps.map((d, i) => cardHTML(d, i)).join('')}</div>`;
+}
+
+function getFilteredDumps() {
+  if (currentFilter === 'done') return allDumps.filter(d => d.is_done);
+  if (currentFilter === 'high') return allDumps.filter(d => d.priority === 'high' && !d.is_done);
+  if (currentFilter === 'all') return allDumps.filter(d => !d.is_done);
+  return allDumps.filter(d => d.category === currentFilter && !d.is_done);
+}
+
+function cardHTML(d, i) {
+  const timeAgo = getTimeAgo(d.created_at);
+  const priIcon = d.priority === 'high' ? '●' : d.priority === 'low' ? '○' : '◐';
+  const priClass = 'pri-' + d.priority;
+  return `<div class="dump-card ${d.category}${d.is_done ? ' done' : ''}" style="animation-delay:${i * 0.04}s">
+    <div class="card-top">
+      <span class="card-cat cat-${d.category}">${catLabel(d.category)}</span>
+      <span class="card-pri ${priClass}">${priIcon} ${d.priority}</span>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px">
+      <div class="done-check ${d.is_done ? 'checked' : ''}" onclick="toggleDone('${d.id}','${d.is_done}')" title="${d.is_done ? 'Mark undone' : 'Mark done'}">${d.is_done ? '✓' : ''}</div>
+      <div style="flex:1">
+        <div class="card-title" style="${d.is_done ? 'text-decoration:line-through' : ''}">${esc(d.title)}</div>
+        ${d.summary ? `<div class="card-summary">${esc(d.summary)}</div>` : ''}
+      </div>
+    </div>
+    <div class="card-footer">
+      <span class="card-time">${timeAgo}</span>
+      <div class="card-actions">
+        <button class="card-action-btn del-btn" onclick="deleteDump('${d.id}')">Delete</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function catLabel(c) {
+  return {todo:'✓ Todo',goal:'◎ Goal',idea:'✦ Idea',note:'≡ Note',event:'◷ Event'}[c] || c;
+}
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function getTimeAgo(ts) {
+  const s = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+
+// ── ACTIONS ───────────────────────────────────────────────
+async function toggleDone(id, isDone) {
+  const newDone = isDone === 'true' ? false : true;
+  const { error } = await sb.from('dumps').update({ is_done: newDone }).eq('id', id);
+  if (error) return toast('Failed to update', 'error');
+  await loadDumps();
+  toast(newDone ? '✓ Marked done!' : 'Marked undone', 'success');
+}
+
+async function deleteDump(id) {
+  if (!confirm('Delete this thought?')) return;
+  const { error } = await sb.from('dumps').delete().eq('id', id);
+  if (error) return toast('Failed to delete', 'error');
+  await loadDumps();
+  toast('Deleted', 'info');
+}
+
+// ── FILTER & SEARCH ───────────────────────────────────────
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('search-input').value = '';
+  renderDumps();
+}
+
+function searchDumps() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  if (!q) { renderDumps(); return; }
+  const filtered = allDumps.filter(d =>
+    d.title?.toLowerCase().includes(q) ||
+    d.summary?.toLowerCase().includes(q) ||
+    d.raw_text?.toLowerCase().includes(q)
+  );
+  renderDumps(filtered);
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success: '✓', error: '✗', info: 'ℹ' };
+  el.innerHTML = `<span>${icons[type]||'ℹ'}</span> ${msg}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Secret keys - NEVER upload these
+.env
+.env.local
+.env.production
+
+# Node modules - too large to upload
+node_modules/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
