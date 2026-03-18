@@ -306,6 +306,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;heigh
 const SUPABASE_URL = 'https://chnfmhbpgolsegygzrpn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNobmZtaGJwZ29sc2VneWd6cnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTg1OTcsImV4cCI6MjA4OTQzNDU5N30.GU-MIFWlSG5XXaH_Kxs29O5mc8RFcs11vCxcKcnvQTY';
 
+
 const BACKEND = '/api/chat';
 
 // ── INIT ─────────────────────────────────────────────────
@@ -348,7 +349,7 @@ window.onload = async () => {
 async function signInWithGoogle() {
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: 'https://mind-dump-28mtwqsat-krishnashivharhe0-2248s-projects.vercel.app/app.html' }
+    options: { redirectTo: 'https://mind-dump-blush.vercel.app/app.html' }
   });
   if (error) toast('Sign in failed: ' + error.message, 'error');
 }
