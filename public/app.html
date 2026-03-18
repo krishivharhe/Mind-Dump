@@ -347,7 +347,7 @@ window.onload = async () => {
 async function signInWithGoogle() {
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href }
+    options: { redirectTo: 'https://mind-dump-28mtwqsat-krishnashivharhe0-2248s-projects.vercel.app/app.html' }
   });
   if (error) toast('Sign in failed: ' + error.message, 'error');
 }
